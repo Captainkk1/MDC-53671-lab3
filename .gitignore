@@ -1,0 +1,11 @@
+# personal notes (contain the JCDecaux API key)
+notes
+
+# archive produced by archive-data.py
+*.txt
+
+# submission archive
+*.zip
+
+__pycache__/
+.DS_Store
