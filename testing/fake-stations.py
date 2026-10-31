@@ -1,6 +1,4 @@
-"""Test helper (not part of the submission): send a scripted sequence of fake
-stations to "velib-stations", so that every case of scripts 2-4 is triggered
-without waiting for a real station to become empty."""
+"""Test by using a fake station"""
 import json
 import time
 
@@ -10,8 +8,7 @@ TOPIC = "velib-stations"
 
 producer = Producer({"bootstrap.servers": "localhost:9092"})
 
-# (available_bikes, available_bike_stands) sent one after the other, and what
-# each step should trigger in the pipeline
+
 SEQUENCE = [
     (2, 8, "first time seen   -> forwarded by script 2, script 3 only records"),
     (2, 8, "no change         -> NOT forwarded by script 2"),

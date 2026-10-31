@@ -1,5 +1,5 @@
-"""Exercise 1: poll the JCDecaux API every 10 seconds and publish
-each station as one message to the Kafka topic "velib-stations"."""
+"""ex1: get the stations data from the API every 10 seconds and send to the topic."""
+
 import json
 import os
 import time
@@ -7,17 +7,18 @@ import urllib.request
 
 from confluent_kafka import Producer
 
-API_KEY = os.environ["JCDECAUX_KEY"]  
+API_KEY = os.environ["JCDECAUX_KEY"]
 URL = f"https://api.jcdecaux.com/vls/v1/stations?apiKey={API_KEY}"
 TOPIC = "velib-stations"
-INTERVAL = 10  # seconds between two API calls
+INTERVAL = 10 
 
 producer = Producer({"bootstrap.servers": "localhost:9092"})
 
+#get data
 def fetch_stations():
-    # """Call the API and return the list of stations.
-    with urllib.request.urlopen(URL, timeout=10) as response:
-        return json.loads(response.read().decode("utf-8"))
+    with urllib.request.urlopen(URL, timeout=20) as response:
+        body = response.read().decode("utf-8")
+    return json.loads(body)
 
 
 def main():
@@ -25,18 +26,22 @@ def main():
         try:
             stations = fetch_stations()
         except Exception as error:
-            print(f"API request failed: {error}")
+            print(f"API error: {error}")
             time.sleep(INTERVAL)
             continue
-
+#send info per station
         for station in stations:
-            # key = city + station number, so each station is identifiable downstream
-            key = f"{station['contract_name']}-{station['number']}"
-            producer.produce(TOPIC, key=key, value=json.dumps(station))
+            # the key is city + station number
+            city = station["contract_name"]
+            number = station["number"]
+            key = f"{city}-{number}"
+            payload = json.dumps(station)
+            producer.produce(TOPIC, key=key, value=payload)
             producer.poll(0)
         producer.flush()
 
-        print(f"{time.strftime('%H:%M:%S')} sent {len(stations)} stations to {TOPIC}")
+        now = time.strftime("%H:%M:%S")
+        print(f"{now} sent {len(stations)} stations")
         time.sleep(INTERVAL)
 
 

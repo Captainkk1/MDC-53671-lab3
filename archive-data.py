@@ -1,9 +1,9 @@
-"""Exercise 5: archive the input data of the Kafka topic "velib-stations"
-in a text file (one JSON station per line)."""
+"""e5: save the messages of velib in a text file
+(one JSON per line)."""
 from confluent_kafka import Consumer
 
 IN_TOPIC = "velib-stations"
-ARCHIVE_FILE = "velib-stations-archive.txt"
+ARCHIVE_FILE = "velib-stations.txt"
 
 consumer = Consumer({
     "bootstrap.servers": "localhost:9092",
@@ -16,7 +16,7 @@ def main():
     consumer.subscribe([IN_TOPIC])
     count = 0
     try:
-        # append mode, so restarting the script does not erase the archive
+        # new content will be added at the end of file
         with open(ARCHIVE_FILE, "a", encoding="utf-8") as archive:
             while True:
                 msg = consumer.poll(1.0)
@@ -26,11 +26,12 @@ def main():
                     print(f"Consumer error: {msg.error()}")
                     continue
 
-                archive.write(msg.value().decode("utf-8") + "\n")
+                line = msg.value().decode("utf-8")
+                archive.write(line + "\n")
                 archive.flush()
                 count += 1
                 if count % 1000 == 0:
-                    print(f"{count} records archived in {ARCHIVE_FILE}")
+                    print(f"{count} records saved")
     except KeyboardInterrupt:
         pass
     finally:

@@ -1,6 +1,4 @@
-"""Exercise 2: listen to the Kafka topic "velib-stations" and, whenever the
-status of a station (number of bikes / free slots) changes, send the station
-details to the topic "stations-status"."""
+"""e2: read velib and send to status when its bikes or free slots change."""
 import json
 
 from confluent_kafka import Consumer, Producer
@@ -11,11 +9,11 @@ OUT_TOPIC = "stations-status"
 consumer = Consumer({
     "bootstrap.servers": "localhost:9092",
     "group.id": "stations-activity",
-    "auto.offset.reset": "earliest",
+    "auto.offset.reset": "earliest", #read from earliest message
 })
 producer = Producer({"bootstrap.servers": "localhost:9092"})
 
-# last known (available_bikes, available_bike_stands) for each station key
+# (bikes, free slots) 
 last_status = {}
 
 
@@ -31,22 +29,24 @@ def main():
                 continue
 
             key = msg.key().decode("utf-8")
-            station = json.loads(msg.value().decode("utf-8"))
-            status = (station["available_bikes"], station["available_bike_stands"])
+            raw_value = msg.value().decode("utf-8")
+            station = json.loads(raw_value)
+            bikes = station["available_bikes"]
+            free_slots = station["available_bike_stands"]
+            status = (bikes, free_slots)
 
-            # a station seen for the first time is also forwarded, so that the
-            # downstream scripts know its initial state
-            if last_status.get(key) == status:
-                continue
+            # see the status changes or not
             previous = last_status.get(key)
+            if previous == status:
+                continue
             last_status[key] = status
 
             producer.produce(OUT_TOPIC, key=key, value=json.dumps(station))
             producer.poll(0)
 
             if previous is not None:
-                print(f"{key}: bikes {previous[0]} -> {status[0]}, "
-                      f"free slots {previous[1]} -> {status[1]}")
+                print(f"{key}: bikes changes: {previous[0]} -> {status[0]}, "
+                      f"free slots changes: {previous[1]} -> {status[1]}")
     except KeyboardInterrupt:
         pass
     finally:
