@@ -1,6 +1,4 @@
-"""Exercise 6: monitor all the Kafka topics and print, for every new record,
-the status of the topic in the format:
-Topic-name, Partition-id, offset-id, timestamp"""
+"""E6: print one line for each new message"""
 from datetime import datetime
 
 from confluent_kafka import Consumer
@@ -9,14 +7,12 @@ consumer = Consumer({
     "bootstrap.servers": "localhost:9092",
     "group.id": "monitor-kafka",
     "auto.offset.reset": "latest",
-    # look for newly created topics every 10 s (default is 5 min)
+    # check every 10 seconds
     "topic.metadata.refresh.interval.ms": 10000,
 })
 
 
 def main():
-    # a pattern starting with "^" is a regex: every topic except the internal
-    # ones such as "__consumer_offsets"
     consumer.subscribe(["^[^_].*"])
     print("Topic-name, Partition-id, offset-id, timestamp")
     try:
@@ -31,7 +27,8 @@ def main():
             _, timestamp_ms = msg.timestamp()
             timestamp = datetime.fromtimestamp(timestamp_ms / 1000)
             timestamp = timestamp.isoformat(sep=" ", timespec="milliseconds")
-            print(f"{msg.topic()}, {msg.partition()}, {msg.offset()}, {timestamp}")
+            position = f"{msg.topic()}, {msg.partition()}, {msg.offset()}"
+            print(f"{position}, {timestamp}")
     except KeyboardInterrupt:
         pass
     finally:

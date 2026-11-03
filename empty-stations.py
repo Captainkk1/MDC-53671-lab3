@@ -1,6 +1,4 @@
-"""Exercise 3: listen to the Kafka topic "stations-status" and send a message
-to the topic "empty-stations" as soon as a station becomes empty, or is no
-longer empty."""
+"""e3: read stations-status and send a message to empty-stations when a station status change"""
 import json
 
 from confluent_kafka import Consumer, Producer
@@ -15,7 +13,7 @@ consumer = Consumer({
 })
 producer = Producer({"bootstrap.servers": "localhost:9092"})
 
-# last known emptiness (True / False) for each station key
+# True if the station was empty the last time we saw it
 was_empty = {}
 
 
@@ -31,23 +29,28 @@ def main():
                 continue
 
             key = msg.key().decode("utf-8")
-            station = json.loads(msg.value().decode("utf-8"))
+            raw_value = msg.value().decode("utf-8")
+            station = json.loads(raw_value)
+            #judge if it's empty
             is_empty = station["available_bikes"] == 0
 
             previous = was_empty.get(key)
             was_empty[key] = is_empty
-            # first time we see the station: we only record its state,
-            # there is no transition yet
+            # status doesn't changed
             if previous is None or previous == is_empty:
                 continue
 
-            # the "is_empty" field tells the consumers which transition it is
-            event = dict(station, is_empty=is_empty)
-            producer.produce(OUT_TOPIC, key=key, value=json.dumps(event))
+            # boolean
+            event = dict(station)
+            event["is_empty"] = is_empty
+            payload = json.dumps(event)
+            producer.produce(OUT_TOPIC, key=key, value=payload)
             producer.poll(0)
 
             change = "became EMPTY" if is_empty else "is no longer empty"
-            print(f"{key} {change} ({station['address']}, {station['contract_name']})")
+            address = station["address"]
+            city = station["contract_name"]
+            print(f"{key} {change} ({address}, {city})")
     except KeyboardInterrupt:
         pass
     finally:

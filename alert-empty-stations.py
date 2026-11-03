@@ -1,5 +1,4 @@
-"""Exercise 4: listen to the Kafka topic "empty-stations" and print a message
-in the console as soon as a station becomes empty (with its address and city)."""
+"""e4: print the result from ex3"""
 import json
 
 from confluent_kafka import Consumer
@@ -24,15 +23,19 @@ def main():
                 print(f"Consumer error: {msg.error()}")
                 continue
 
-            station = json.loads(msg.value().decode("utf-8"))
-            # "empty-stations" also carries "no longer empty" events: skip them
+            raw_value = msg.value().decode("utf-8")
+            station = json.loads(raw_value)
+            # we only print the message when station is empty 
             if not station["is_empty"]:
                 continue
-
-            # some stations (e.g. in Lyon) have an empty address: use the name instead
-            address = station["address"] or station["name"]
-            print(f"ALERT: station empty -> address: {address}, "
-                  f"city: {station['contract_name']}")
+            
+            address = station["address"]
+            if not address:
+                address = station["name"]
+            city = station["contract_name"]
+            print(f"Notice : station empty -> address: {address}, "
+                  f"station's city: {city}")
+            
     except KeyboardInterrupt:
         pass
     finally:
